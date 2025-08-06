@@ -1,8 +1,0 @@
-general:
-  dataset: heart
-  seed: 0
-  api_key: 
-
-eval_params:
-  numshot: 4
-  model: mistral-small-latest
