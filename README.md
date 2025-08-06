@@ -1,6 +1,6 @@
 # Paper Title
 
-This repository contains the implementation for the paper XXX submitted for XXX.
+This repository contains the implementation for the paper **Towards Globally Interpretable Few-Shot Tabular Learning: Distilling Foundation Models** submitted to the NeurIPS 2025 Reliable ML for Unreliable Data Workshop.
 
 ## Environment Setup
 
