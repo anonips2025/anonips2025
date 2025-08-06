@@ -1,0 +1,6 @@
+{
+  "dataset": "electricity",
+  "numshot": 16,
+  "seed": 0,
+  "device": "cuda"
+}

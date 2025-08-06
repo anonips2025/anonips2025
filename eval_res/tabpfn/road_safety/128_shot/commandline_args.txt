@@ -1,0 +1,6 @@
+{
+  "dataset": "road_safety",
+  "numshot": 128,
+  "seed": 0,
+  "device": "cuda"
+}

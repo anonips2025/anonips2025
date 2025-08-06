@@ -1,0 +1,6 @@
+{
+  "dataset": "credit_card_default",
+  "numshot": 8,
+  "seed": 0,
+  "device": "cuda"
+}

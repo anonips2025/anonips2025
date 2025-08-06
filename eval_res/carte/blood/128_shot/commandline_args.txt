@@ -1,0 +1,6 @@
+{
+  "dataset": "blood",
+  "numshot": 128,
+  "seed": 0,
+  "device": "cuda"
+}
