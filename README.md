@@ -1,4 +1,4 @@
-# Paper Title
+# Towards Globally Interpretable Few-Shot Tabular Learning: Distilling Foundation Models
 
 This repository contains the implementation for the paper **Towards Globally Interpretable Few-Shot Tabular Learning: Distilling Foundation Models** submitted to the NeurIPS 2025 Reliable ML for Unreliable Data Workshop.
 
