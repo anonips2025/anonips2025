@@ -1,0 +1,6 @@
+{
+  "dataset": "eye_movements",
+  "numshot": 32,
+  "seed": 0,
+  "device": "cuda"
+}

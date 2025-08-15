@@ -1,0 +1,6 @@
+{
+  "dataset": "income",
+  "numshot": 8,
+  "seed": 0,
+  "device": "cuda"
+}
