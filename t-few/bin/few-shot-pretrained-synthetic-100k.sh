@@ -18,7 +18,7 @@ eval_epoch_interval=0
 for model in 't03b' # 't03b'
 do
   # For zero-shot set to '0', for all to 'all'
-  for num_shot in 4 16 32 64 128 256
+  for num_shot in 4 8 16 32 64 128 256
   do
     # Datasets: albert bank blood calhousing compas covertype credit_card_default creditg diabetes electricity eye_movements heart income jungle road_safety
     # Run all serializations for car

@@ -85,7 +85,7 @@ def main(config):
     model.eval()
     all_outputs = []
 
-    for batch in tqdm(synth_loader, desc="Inferencing", leave=False):
+    for batch in tqdm(synth_loader, desc="Inferencing on synthetic data", leave=False):
         with torch.no_grad():
             output = model.predict(batch)
             if isinstance(output, list):
@@ -111,6 +111,54 @@ def main(config):
         pickle.dump(merged, f)
     print(f"Saved synthetic inference results to {out_path}")
 
+    # Inference on test data
+    print("Loading test dataset...")
+    test_data_path = os.path.join(config.datasets_offline, config.dataset + '_test')
+    test_data = load_from_disk(test_data_path)
+
+    if "idx" not in test_data.column_names:
+        test_data = test_data.map(lambda ex, idx: {**ex, "idx": idx}, with_indices=True)
+
+    print("Preparing test data loader...")
+    test_dataset = datamodule.dev_dataset
+    test_dataset.dataset = test_data
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=config.eval_batch_size,
+        shuffle=False,
+        collate_fn=val_collate_fn,
+        num_workers=min([config.eval_batch_size, config.num_workers]),
+    )
+
+    print("Running inference on test data...")
+    all_test_outputs = []
+
+    for batch in tqdm(test_loader, desc="Inferencing on test data", leave=False):
+        with torch.no_grad():
+            output = model.predict(batch)
+            if isinstance(output, list):
+                all_test_outputs.extend(output)
+            else:
+                all_test_outputs.append(output)
+
+    print("Saving test inference results...")
+    test_out_dir = config.exp_dir.replace(config.dataset, config.dataset + '_test')
+    os.makedirs(test_out_dir, exist_ok=True)
+    test_out_path = os.path.join(test_out_dir, 't0.p')
+    # Merge all keys into flat lists
+    test_merged = {}
+    for entry in all_test_outputs:
+        for key, value in entry.items():
+            if key not in test_merged:
+                test_merged[key] = []
+            if isinstance(value, list):
+                test_merged[key].extend(value)
+            else:
+                test_merged[key].append(value)
+    with open(test_out_path, 'wb') as f:
+        pickle.dump(test_merged, f)
+    print(f"Saved test inference results to {test_out_path}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -121,8 +169,9 @@ if __name__ == "__main__":
     config = Config(args.config_files, args.kwargs)
     config.datasets_offline = "/hdd/hans/TabLLM/datasets_serialized"
     out_dir = config.exp_dir.replace(config.dataset, config.dataset + '_synthetic')
-    if os.path.exists(out_dir):
-        print(f"Output directory {out_dir} already exists. Skipping run.")
+    test_out_dir = config.exp_dir.replace(config.dataset, config.dataset + '_test')
+    if os.path.exists(out_dir) and os.path.exists(test_out_dir):
+        print(f"Output directories {out_dir} and {test_out_dir} already exist. Skipping run.")
     else:
         print(f"Start synthetic distillation experiment {config.exp_name}")
         set_seeds(config.seed)

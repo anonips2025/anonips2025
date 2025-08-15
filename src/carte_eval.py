@@ -4,6 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 import warnings
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, confusion_matrix
 
 warnings.filterwarnings("ignore", message=".*torch.cuda.amp.GradScaler.*", category=FutureWarning)
 
@@ -36,8 +37,8 @@ def main():
     set_seed(seed)
 
     save_dir = f"eval_res/carte/{dataset_name}/{num_shot}_shot/"
-    args_path = os.path.join(save_dir, "commandline_args.txt")
-    if os.path.exists(args_path):
+    results_path = os.path.join(save_dir, "eval_metrics.json")
+    if os.path.exists(results_path):
         print(f"Output already exists at {save_dir}. Skipping run.")
         return
 
@@ -61,18 +62,78 @@ def main():
 
     X_few_graph = preprocessor.fit_transform(X_few, y=y_few.reset_index(drop=True).to_numpy())
     X_synth_graph = preprocessor.transform(X_synth)
+    X_test_graph = preprocessor.transform(X_test)
 
     clf = CARTEClassifier(device=device)
-    clf.fit(X_few_graph, y_few)
+    
+    # For very small datasets, CARTE might fail with internal validation split
+    # Try to fit, and if it fails due to insufficient samples, skip this configuration
+    try:
+        clf.fit(X_few_graph, y_few)
+    except ValueError as e:
+        if "test_size" in str(e) and "greater or equal to the number of classes" in str(e):
+            print(f"Skipping {dataset_name} with {num_shot} shots due to insufficient samples for CARTE validation split")
+            return
+        else:
+            raise e
 
+    # Inference on synthetic data
     y_pred = clf.predict(X_synth_graph)
+    
+    # Inference on test data
+    y_test_pred = clf.predict(X_test_graph)
+    y_test_probs = clf.predict_proba(X_test_graph)
+    
+    # Evaluate performance on test set
+    accuracy = accuracy_score(y_test.values, y_test_pred)
+    
+    # Check if predictions are all the same class (which makes ROC-AUC undefined)
+    if len(np.unique(y_test_pred)) == 1:
+        # All predictions are the same class, set AUC to 50%
+        auc = 0.5
+        print(f"Warning: All test predictions are class {y_test_pred[0]}, setting AUC to 0.5")
+    else:
+        # Handle probability array dimensions - CARTE might return 1D or 2D arrays
+        if y_test_probs.ndim == 2 and y_test_probs.shape[1] == 2:
+            # Binary classification with 2D probabilities - take positive class
+            auc = roc_auc_score(y_test.values, y_test_probs[:, 1])
+        elif y_test_probs.ndim == 1:
+            # 1D probabilities - use as is
+            auc = roc_auc_score(y_test.values, y_test_probs)
+        else:
+            # Fallback - use predictions for AUC (less accurate)
+            auc = roc_auc_score(y_test.values, y_test_pred)
+    
+    f1 = f1_score(y_test.values, y_test_pred)
+    
+    # Calculate TPR and FPR from confusion matrix
+    tn, fp, fn, tp = confusion_matrix(y_test.values, y_test_pred).ravel()
+    tpr = tp / (tp + fn)  # True Positive Rate (Sensitivity/Recall)
+    fpr = fp / (fp + tn)  # False Positive Rate
+    
+    # Prepare evaluation metrics
+    eval_metrics = {
+        'accuracy': float(accuracy),
+        'auc': float(auc),
+        'f1': float(f1),
+        'tpr': float(tpr),
+        'fpr': float(fpr)
+    }
 
     os.makedirs(save_dir, exist_ok=True)
     np.save(os.path.join(save_dir, "y_pred.npy"), y_pred)
     np.save(os.path.join(save_dir, "X_synth.npy"), X_synth)
-    with open(args_path, "w") as f:
+    np.save(os.path.join(save_dir, "y_test_pred.npy"), y_test_pred)
+    
+    # Save evaluation metrics
+    with open(os.path.join(save_dir, "eval_metrics.json"), "w") as f:
+        json.dump(eval_metrics, f, indent=2)
+    
+    with open(os.path.join(save_dir, "commandline_args.txt"), "w") as f:
         json.dump(vars(args), f, indent=2)
+    
     print(f"Saved inference results to {save_dir}")
+    print(f"Test set performance: AUC={auc:.4f}, Accuracy={accuracy:.4f}, F1={f1:.4f}, TPR={tpr:.4f}, FPR={fpr:.4f}")
 
 if __name__ == "__main__":
     main()

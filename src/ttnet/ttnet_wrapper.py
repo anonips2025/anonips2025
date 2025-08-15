@@ -46,7 +46,7 @@ class TTNetPreprocessor:
                 print(f"Warning: Max categorical index {max(self.categorical_indices)} is out of bounds for X_fit with shape {X_fit.shape}. Skipping OHE fitting for these columns.")
                 self.ohe = None # Or handle error
             else:
-                self.ohe = OneHotEncoder(sparse=False, categories="auto", drop="first", handle_unknown='ignore')
+                self.ohe = OneHotEncoder(sparse_output=False, categories="auto", drop="first", handle_unknown='ignore')
                 self.ohe.fit(X_fit[:, self.categorical_indices])
         
         if len(self.continuous_indices) > 0:
@@ -64,7 +64,7 @@ class TTNetPreprocessor:
             raise RuntimeError("Preprocessor must be fitted before transforming data.")
         X = np.array(X)
         
-        X_cat_list = []
+        # Handle categorical features
         if self.ohe is not None and len(self.categorical_indices) > 0:
              # Ensure X has enough columns for categorical_indices
             if X.shape[1] > max(self.categorical_indices, default=-1):
@@ -73,11 +73,10 @@ class TTNetPreprocessor:
                 print(f"Warning: X with shape {X.shape} has insufficient columns for categorical indices. Producing zero array for categorical part.")
                 num_ohe_features = sum(len(cats) -1 for cats in self.ohe.categories_) if self.ohe.categories_ else 0
                 X_cat = np.zeros((X.shape[0], num_ohe_features))
-
         else: # No OHE or no categorical indices
             X_cat = np.zeros((X.shape[0], 0))
 
-        X_cont_list = []
+        # Handle continuous features
         if self.scaler is not None and len(self.continuous_indices) > 0:
             if X.shape[1] > max(self.continuous_indices, default=-1):
                 X_cont = self.scaler.transform(X[:, self.continuous_indices].astype(float))
@@ -85,11 +84,20 @@ class TTNetPreprocessor:
                 print(f"Warning: X with shape {X.shape} has insufficient columns for continuous indices. Producing zero array for continuous part.")
                 num_cont_features = len(self.continuous_indices)
                 X_cont = np.zeros((X.shape[0], num_cont_features))
-
         else: # No Scaler or no continuous_indices
             X_cont = np.zeros((X.shape[0], 0))
             
-        X_proc = np.concatenate([X_cat, X_cont], axis=1)
+        # Concatenate features - handle edge cases
+        if X_cat.shape[1] > 0 and X_cont.shape[1] > 0:
+            X_proc = np.concatenate([X_cat, X_cont], axis=1)
+        elif X_cat.shape[1] > 0:
+            X_proc = X_cat
+        elif X_cont.shape[1] > 0:
+            X_proc = X_cont
+        else:
+            # No features at all - create a dummy feature
+            X_proc = np.zeros((X.shape[0], 1))
+            
         index = X_cat.shape[1] # index where continuous features start
         return X_proc.astype(np.float32), index
 

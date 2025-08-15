@@ -1,16 +1,10 @@
 import argparse
 import os
 import json
-import math
-import random
-from copy import deepcopy
-from typing import Optional
 
 import numpy as np
 import pandas as pd
-import rtdl_num_embeddings
-import sklearn.model_selection
-import sklearn.preprocessing
+from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, confusion_matrix
 import tabm
 import torch
 import torch.nn as nn
@@ -40,8 +34,8 @@ def main():
 
     # Output directory
     save_dir = f"eval_res/tabm/{args.dataset}/{args.numshot}_shot/"
-    args_path = os.path.join(save_dir, "commandline_args.txt")
-    if os.path.exists(args_path):
+    results_path = os.path.join(save_dir, "eval_metrics.json")
+    if os.path.exists(results_path):
         print(f"Output already exists at {save_dir}. Skipping run.")
         return
 
@@ -67,6 +61,10 @@ def main():
     X_few_tensor = torch.as_tensor(X_few_proc, device=device, dtype=torch.float32)
     y_few_tensor = torch.as_tensor(y_few.values, device=device, dtype=torch.long)
     X_synth_tensor = torch.as_tensor(X_synth_proc, device=device, dtype=torch.float32)
+    
+    # Process test data for evaluation
+    X_test_proc, _ = preprocessor.transform(X_test)
+    X_test_tensor = torch.as_tensor(X_test_proc, device=device, dtype=torch.float32)
 
     # Model setup
     n_num_features = X_few_proc.shape[1]
@@ -103,17 +101,59 @@ def main():
     # Inference
     model.eval()
     with torch.inference_mode():
+        # Inference on synthetic data
         y_pred_synth = apply_model(X_synth_tensor)
         y_pred_synth = torch.softmax(y_pred_synth, dim=-1).mean(1)
         y_pred = y_pred_synth.argmax(1).cpu().numpy()
+        
+        # Inference on test data
+        y_pred_test_logits = apply_model(X_test_tensor)
+        y_pred_test_probs = torch.softmax(y_pred_test_logits, dim=-1).mean(1)
+        y_test_pred = y_pred_test_probs.argmax(1).cpu().numpy()
+        y_test_probs = y_pred_test_probs.cpu().numpy()
+    
+    # Evaluate performance on test set
+    accuracy = accuracy_score(y_test.values, y_test_pred)
+    
+    # Check if predictions are all the same class (which makes ROC-AUC undefined)
+    if len(np.unique(y_test_pred)) == 1:
+        # All predictions are the same class, set AUC to 50%
+        auc = 0.5
+        print(f"Warning: All test predictions are class {y_test_pred[0]}, setting AUC to 0.5")
+    else:
+        auc = roc_auc_score(y_test.values, y_test_probs[:, 1])
+    
+    f1 = f1_score(y_test.values, y_test_pred)
+    
+    # Calculate TPR and FPR from confusion matrix
+    tn, fp, fn, tp = confusion_matrix(y_test.values, y_test_pred).ravel()
+    tpr = tp / (tp + fn)  # True Positive Rate (Sensitivity/Recall)
+    fpr = fp / (fp + tn)  # False Positive Rate
+    
+    # Prepare evaluation metrics
+    eval_metrics = {
+        'accuracy': float(accuracy),
+        'auc': float(auc),
+        'f1': float(f1),
+        'tpr': float(tpr),
+        'fpr': float(fpr)
+    }
 
     # Save results
     os.makedirs(save_dir, exist_ok=True)
     np.save(os.path.join(save_dir, "y_pred.npy"), y_pred)
     np.save(os.path.join(save_dir, "X_synth.npy"), X_synth)
-    with open(args_path, "w") as f:
+    np.save(os.path.join(save_dir, "y_test_pred.npy"), y_test_pred)
+    
+    # Save evaluation metrics
+    with open(os.path.join(save_dir, "eval_metrics.json"), "w") as f:
+        json.dump(eval_metrics, f, indent=2)
+    
+    with open(os.path.join(save_dir, "commandline_args.txt"), "w") as f:
         json.dump(vars(args), f, indent=2)
+    
     print(f"Saved inference results to {save_dir}")
+    print(f"Test set performance: AUC={auc:.4f}, Accuracy={accuracy:.4f}, F1={f1:.4f}, TPR={tpr:.4f}, FPR={fpr:.4f}")
 
 if __name__ == "__main__":
     main()

@@ -9,6 +9,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
+from src.utils.helper import get_few_shot_from_csv
 from tabllm.external_datasets_variables import (
     template_config_bank, template_bank,
     template_config_blood, template_blood,
@@ -82,7 +83,7 @@ def serialize_single_file(dataset_name: str, df: pd.DataFrame, config, template,
     print(f"Saved {output_path.name} with {len(sentences)} examples")
 
 
-def serialize_dataset(dataset_name: str):
+def serialize_dataset(dataset_name: str, seed: int = 0):
     config_map = {
         'bank': (template_config_bank, template_bank),
         'blood': (template_config_blood, template_blood),
@@ -105,9 +106,20 @@ def serialize_dataset(dataset_name: str):
     base_path = Path(f'dataset/{dataset_name}')
     output_base = Path('tabllm/datasets_serialized')
 
-    # Process original dataset
-    # orig_df = pd.read_csv(base_path / f'{dataset_name}.csv')
-    # serialize_single_file(dataset_name, orig_df, config, template, output_base / dataset_name)
+    # Get few-shot and test data using the same function as tabpfn_eval
+    try:
+        X_few, y_few, X_train, y_train, X_test, y_test = get_few_shot_from_csv(dataset_name, num_shot=4, seed=seed)
+        
+        # Combine test features and labels back into a DataFrame with 'class' column
+        test_df = X_test.copy()
+        test_df['class'] = y_test.values
+        
+        # Serialize test dataset
+        serialize_single_file(dataset_name, test_df, config, template, output_base / f'{dataset_name}_test')
+        print(f"Serialized test data for {dataset_name} with {len(test_df)} examples")
+        
+    except Exception as e:
+        print(f"Error processing test data for {dataset_name}: {str(e)}")
 
     # Process synthetic dataset
     synth_path = base_path / f'{dataset_name}_synthetic.csv'
@@ -119,7 +131,8 @@ def serialize_dataset(dataset_name: str):
 
 
 if __name__ == "__main__":
+    seed = 0  # Default seed as requested
     for dataset in ['albert', 'bank', 'blood', 'calhousing', 'compas', 'covertype',
                    'credit_card_default', 'creditg', 'diabetes', 'electricity',
                    'eye_movements', 'heart', 'income', 'jungle', 'road_safety']:
-        serialize_dataset(dataset)
+        serialize_dataset(dataset, seed=seed)
