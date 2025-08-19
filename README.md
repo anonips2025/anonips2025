@@ -154,14 +154,16 @@ eval_res/tabllm/
 ```
 
 
-#### 3.2 TabPFN and CARTE Inference
+#### 3.2 TabM, TabPFN and CARTE Inference
 
-After TabLLM inference, the next step is to run inference with TabPFN and CARTE models. These are simpler to execute as they don't require external repository setup.
+After TabLLM inference, the next step is to run inference with TabM, TabPFN and CARTE models. These are simpler to execute as they don't require external repository setup.
 
 ```bash
 bash bin/tabpfn.sh
 
 bash bin/carte.sh
+
+bash bin/tabm.sh
 ```
 
 **Expected Output Structure:**
@@ -170,7 +172,7 @@ After running both scripts, your `eval_res/` directory will contain:
 eval_res/
 ├── tabllm/
 │   └── ... (from previous step)
-├── tabpfn/
+├── tabm/
 │   ├── albert/
 │   │   ├── 4_shot/
 │   │   │   └── commandline_args.txt
@@ -179,6 +181,10 @@ eval_res/
 │   │   ├── 16_shot/
 │   │   └── ... (other shot configs)
 │   └── ... (other datasets)
+├── tabpfn/
+│   ├── albert/
+│   │   ├── 4_shot/
+│   │   │   └── commandline_args.txt
 └── carte/
     ├── albert/
     │   ├── 4_shot/
