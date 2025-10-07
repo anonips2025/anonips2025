@@ -1,0 +1,6 @@
+{
+  "dataset": "jungle",
+  "numshot": 16,
+  "seed": 0,
+  "device": "cuda"
+}

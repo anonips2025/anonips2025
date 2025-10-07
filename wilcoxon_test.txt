@@ -1,0 +1,11 @@
+Wilcoxon signed-rank test
+Null hypothesis H_0: distillation AUC <= baseline AUC
+Alternative hypothesis H_1: distillation AUC > baseline AUC
+Test significance level: 0.01
+
+Mean difference between distillation AUC and baseline AUC: 0.00797810017005649
+Test statistic: 28463230.5
+p-value: 1.9327202715802944e-25
+N (paired samples): 10125
+
+Conclusion: because p < 0.01, reject the null hypothesis.

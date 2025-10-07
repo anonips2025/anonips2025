@@ -1,0 +1,6 @@
+{
+  "dataset": "calhousing",
+  "numshot": 32,
+  "seed": 0,
+  "device": "cuda"
+}

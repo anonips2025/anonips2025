@@ -1,0 +1,15 @@
+AUCs: [0.5, 0.5, 0.5, 0.5, 0.5]
+Accuracies: [0.5, 0.5, 0.5, 0.5, 0.5]
+TPRs: [0.0, 0.0, 0.0, 0.0, 0.0]
+FPRs: [0.0, 0.0, 0.0, 0.0, 0.0]
+F1s: [0.0, 0.0, 0.0, 0.0, 0.0]
+Complexities: [-1, -1, -1, -1, -1]
+Mean AUC: 0.5000
+Std AUC: 0.0000
+Mean Acc: 0.5000
+Std Acc: 0.0000
+Mean TPR: 0.0000
+Mean FPR: 0.0000
+Mean F1: 0.0000
+Mean Complexity: -1.00
+Std Complexity: 0.00

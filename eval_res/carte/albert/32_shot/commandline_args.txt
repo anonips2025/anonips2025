@@ -1,0 +1,6 @@
+{
+  "dataset": "albert",
+  "numshot": 32,
+  "seed": 0,
+  "device": "cuda"
+}
